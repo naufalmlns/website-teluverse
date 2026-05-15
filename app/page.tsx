@@ -49,21 +49,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* LIVE EVENTS SECTION */}
-        <section className="bg-gray-50 py-20 border-t border-gray-100">
-          <div className="max-w-6xl mx-auto px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">📍 Live Events Board</h2>
-              <p className="text-gray-600">Jangan lewatkan berbagai kegiatan menarik yang sedang berlangsung di Tel-U hari ini.</p>
-            </div>
-
-            <div className="bg-white p-12 rounded-3xl shadow-sm border border-gray-200 text-center">
-              <p className="text-gray-500 italic text-lg">
-                Belum ada event yang sedang aktif saat ini.
-              </p>
-            </div>
-          </div>
-        </section>
       </main>
 
       {/* FOOTER - THE SECRET LINK */}
