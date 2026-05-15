@@ -7,6 +7,94 @@ interface Quest {
   Destination: string;
 }
 
+// Komponen terpisah untuk Select Searchable per-item
+function BuildingSearchSelect({ 
+  value, 
+  onChange, 
+  buildings, 
+  isLoading,
+  index 
+}: { 
+  value: string, 
+  onChange: (id: string) => void, 
+  buildings: any[], 
+  isLoading: boolean,
+  index: number 
+}) {
+  const [search, setSearch] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selected = buildings.find(b => b.id === value);
+  const placeholderText = selected ? `${selected.formal || selected.name} (${selected.name})` : (isLoading ? '⏳ Memuat gedung...' : '🔍 Cari nama gedung...');
+
+  const filteredBuildings = buildings.filter(b => {
+    const keyword = search.toLowerCase();
+    return !keyword || 
+      b.name.toLowerCase().includes(keyword) || 
+      (b.formal && b.formal.toLowerCase().includes(keyword)) ||
+      b.id.includes(keyword);
+  });
+
+  return (
+    <div className="relative w-full">
+      <div 
+        className={`w-full flex items-center gap-2 border bg-white rounded-xl p-3.5 transition-all cursor-text ${isOpen ? 'border-[#9B0B0B] ring-4 ring-red-50' : 'border-gray-200'}`}
+        onClick={() => !isLoading && setIsOpen(true)}
+      >
+        <span className="text-gray-400 text-sm">📍</span>
+        <input
+          type="text"
+          placeholder={placeholderText}
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          disabled={isLoading}
+          className="flex-1 outline-none text-sm bg-transparent text-gray-900 placeholder:text-gray-400 disabled:opacity-50"
+        />
+        {value && !isOpen && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onChange(''); setSearch(''); }}
+            className="text-gray-300 hover:text-red-500 transition px-1"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto">
+            {filteredBuildings.length > 0 ? (
+              filteredBuildings.map(b => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(b.id);
+                    setSearch('');
+                    setIsOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-red-50 text-sm transition-colors border-b border-gray-50 last:border-0"
+                >
+                  <p className="font-bold text-gray-800">{b.formal || b.name}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">ID: {b.id} • {b.name}</p>
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-gray-500 text-center">Gedung tidak ditemukan</div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function ModeManagementPage() {
   const [mode, setMode] = useState<string>('Normal');
   const [modeStatus, setModeStatus] = useState<string>('');
@@ -149,28 +237,13 @@ export default function ModeManagementPage() {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
                       Pilih Gedung Tujuan {index + 1}
                     </label>
-                    <select
+                    <BuildingSearchSelect
                       value={quest.buildingId}
-                      onChange={(e) => handleQuestChange(index, e.target.value)}
-                      required={mode === 'SpecialEvent'}
-                      disabled={isLoading}
-                      className="w-full bg-white border border-gray-200 p-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-red-50 focus:border-[#9B0B0B] transition-all appearance-none cursor-pointer font-medium text-gray-700 disabled:bg-gray-50"
-                    >
-                      {isLoading ? (
-                        <option>⏳ Sedang memuat gedung...</option>
-                      ) : buildingList.length > 0 ? (
-                        <>
-                          <option value="">-- Pilih Lokasi --</option>
-                          {buildingList.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.formal || b.name} ({b.name})
-                            </option>
-                          ))}
-                        </>
-                      ) : (
-                        <option>❌ Gedung tidak ditemukan di PlayFab</option>
-                      )}
-                    </select>
+                      onChange={(id) => handleQuestChange(index, id)}
+                      buildings={buildingList}
+                      isLoading={isLoading}
+                      index={index}
+                    />
                   </div>
 
                   {quests.length > 1 && (

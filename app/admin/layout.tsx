@@ -11,6 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Overview', href: '/admin', icon: '📊' },
     { name: 'Mode Management', href: '/admin/modes', icon: '🎛️' },
     { name: 'Partner Accounts', href: '/admin/mitra', icon: '👥' },
+    { name: 'Event Management', href: '/admin/events', icon: '🎪' },
   ];
 
   return (
