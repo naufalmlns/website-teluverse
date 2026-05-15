@@ -1,115 +1,173 @@
 import { createAdminClient } from '@/utils/supabase/admin'
-import { createMitra, deleteMitra } from './actions'
+import { createMitra } from './actions'
+import ExpiryInput from './ExpiryInput'
+import DeleteMitraForm from './DeleteMitraForm'
+import Link from 'next/link'
 
-export default async function ManajemenMitraPage() {
-  const supabaseAdmin = createAdminClient()
+export default async function ManajemenMitraPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page } = await searchParams;
+  const currentPage = Number(page) || 1;
+  const pageSize = 10;
+  const offset = (currentPage - 1) * pageSize;
 
-  // Gunakan Admin Client untuk bypass RLS, sehingga daftar mitra pasti muncul
-  const { data: mitras } = await supabaseAdmin
+  const supabaseAdmin = createAdminClient();
+
+  // Ambil daftar mitra dengan paginasi
+  const { data: mitras, count } = await supabaseAdmin
     .from('profiles')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('role', 'mitra')
     .order('created_at', { ascending: false })
+    .range(offset, offset + pageSize - 1);
+
+  const totalPages = Math.ceil((count || 0) / pageSize);
 
   return (
-    <div className="w-full space-y-8">
-      <div>
-        <h2 className="text-3xl font-extrabold text-red-700">Manajemen Mitra</h2>
-        <p className="text-gray-500 mt-2">Kelola akun untuk para Mitra / Tenant Campus Tour.</p>
+    <div className="space-y-8">
+      <div className="flex justify-between items-end">
+        <div>
+          <h2 className="text-3xl font-extrabold text-gray-900">👥 Partner Accounts</h2>
+          <p className="text-gray-500 mt-2">Kelola akses dan masa aktif untuk akun Mitra / Tenant Campus Tour.</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Form Tambah Mitra */}
-        <div className="col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-          <h3 className="text-lg font-bold mb-4 text-gray-800">Tambah Akun Mitra</h3>
-          <form action={createMitra} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Nama Instansi</label>
-              <input type="text" name="name" required className="w-full border border-gray-300 rounded-lg p-2" placeholder="Cth: Open Library" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-              <input type="email" name="email" required className="w-full border border-gray-300 rounded-lg p-2" placeholder="mitra@telkomuniversity.ac.id" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-              <input type="password" name="password" required minLength={6} className="w-full border border-gray-300 rounded-lg p-2" placeholder="Minimal 6 karakter" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Batas Waktu (Opsional)</label>
-              <input type="datetime-local" name="expires_at" className="w-full border border-gray-300 rounded-lg p-2" />
-              <p className="text-xs text-gray-500 mt-1">Kosongkan jika akun permanen.</p>
-            </div>
-            <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg transition mt-4">
-              Buat Akun
-            </button>
-          </form>
-        </div>
-
-        {/* Tabel Daftar Mitra */}
-        <div className="col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-          <h3 className="text-lg font-bold mb-4 text-gray-800">Daftar Mitra Terdaftar</h3>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-100 text-gray-700">
-                <tr>
-                  <th className="p-3 rounded-tl-lg">Nama Instansi</th>
-                  <th className="p-3">Status / Expiry</th>
-                  <th className="p-3">Dibuat Pada</th>
-                  <th className="p-3 rounded-tr-lg text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {mitras && mitras.length > 0 ? (
-                  mitras.map((mitra) => {
-                    return (
-                      <tr key={mitra.id} className="hover:bg-gray-50">
-                        <td className="p-3">
-                          <div className="font-semibold text-gray-800">{mitra.name}</div>
-                          <div className="text-xs text-gray-500">{mitra.email || 'Email belum di-set'}</div>
-                        </td>
-                        <td className="p-3">
-                          {mitra.expires_at ? (
-                            new Date() > new Date(mitra.expires_at) ? (
-                              <span className="text-red-600 bg-red-50 px-2 py-1 rounded text-xs font-bold border border-red-200">
-                                ❌ Kedaluwarsa
-                              </span>
-                            ) : (
-                              <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded text-xs border border-orange-200">
-                                Exp: {new Date(mitra.expires_at).toLocaleDateString('id-ID')} {new Date(mitra.expires_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-green-600 bg-green-50 px-2 py-1 rounded text-xs font-bold border border-green-200">
-                              ✅ Permanen
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-gray-500">
-                          {new Date(mitra.created_at).toLocaleDateString('id-ID')}
-                        </td>
-                        <td className="p-3 text-right">
-                          <form action={deleteMitra}>
-                            <input type="hidden" name="userId" value={mitra.id} />
-                            <button type="submit" className="text-red-500 hover:bg-red-50 px-3 py-1 rounded transition text-xs font-bold border border-red-200">
-                              Hapus
-                            </button>
-                          </form>
-                        </td>
-                      </tr>
-                    )
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="p-4 text-center text-gray-500 italic">Belum ada mitra yang terdaftar.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* FORM TAMBAH MITRA */}
+        <div className="lg:col-span-1">
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 sticky top-8">
+            <h3 className="text-xl font-bold mb-6 text-gray-900 flex items-center gap-2">
+              <span className="text-2xl">➕</span> Registrasi Mitra
+            </h3>
+            <form action={createMitra} className="space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Nama Instansi</label>
+                <input type="text" name="name" required className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-[#9B0B0B] outline-none" placeholder="Cth: Open Library" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Email Mitra</label>
+                <input type="email" name="email" required className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-[#9B0B0B] outline-none" placeholder="mitra@telkomuniversity.ac.id" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Password Awal</label>
+                <input type="password" name="password" required minLength={6} className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-[#9B0B0B] outline-none" placeholder="Minimal 6 karakter" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Masa Aktif (Opsional)</label>
+                <ExpiryInput />
+                <p className="text-[10px] text-gray-400 mt-2 font-medium">Kosongkan jika akun ini bersifat permanen.</p>
+              </div>
+              <button type="submit" className="w-full bg-[#9B0B0B] hover:bg-red-900 text-white font-bold py-4 rounded-xl transition shadow-md mt-2 flex justify-center items-center gap-2">
+                Buat Akun Partner
+              </button>
+            </form>
           </div>
         </div>
 
+        {/* TABEL DAFTAR MITRA */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+              <h3 className="font-bold text-gray-800">Daftar Mitra Terdaftar</h3>
+              <span className="bg-white px-3 py-1 rounded-full border border-gray-200 text-xs font-bold text-gray-500">
+                Total: {count || 0}
+              </span>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-gray-400 font-medium border-b border-gray-50">
+                    <th className="p-5">Instansi</th>
+                    <th className="p-5">Status / Expiry</th>
+                    <th className="p-5 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {mitras && mitras.length > 0 ? (
+                    mitras.map((mitra) => {
+                      const isExpired = mitra.expires_at && new Date() > new Date(mitra.expires_at);
+                      return (
+                        <tr key={mitra.id} className="hover:bg-gray-50/50 transition">
+                          <td className="p-5">
+                            <div className="font-bold text-gray-900">{mitra.name}</div>
+                            <div className="text-xs text-gray-400 font-medium">{mitra.email || 'No email set'}</div>
+                          </td>
+                          <td className="p-5">
+                            {mitra.expires_at ? (
+                              isExpired ? (
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1">Expired</span>
+                                  <span className="text-xs text-gray-400 line-through">{new Date(mitra.expires_at).toLocaleDateString('id-ID')}</span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-1">Active (Temporary)</span>
+                                  <span className="text-xs text-gray-700 font-semibold">{new Date(mitra.expires_at).toLocaleDateString('id-ID')}</span>
+                                </div>
+                              )
+                            ) : (
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider mb-1">Active</span>
+                                <span className="text-xs text-gray-700 font-semibold">Permanen</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-5 text-right">
+                            <DeleteMitraForm userId={mitra.id} name={mitra.name} />
+                          </td>
+                        </tr>
+                      )
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="p-10 text-center text-gray-400 italic">Belum ada partner yang terdaftar.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* PAGINATION CONTROLS */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+              <div className="text-xs font-bold text-gray-400">
+                Halaman {currentPage} dari {totalPages}
+              </div>
+              <div className="flex gap-2">
+                {currentPage > 1 ? (
+                  <Link 
+                    href={`/admin/mitra?page=${currentPage - 1}`}
+                    className="px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold transition border border-gray-200"
+                  >
+                    ← Previous
+                  </Link>
+                ) : (
+                  <button disabled className="px-4 py-2 bg-gray-50 text-gray-300 rounded-xl text-xs font-bold cursor-not-allowed border border-gray-100">
+                    ← Previous
+                  </button>
+                )}
+
+                {currentPage < totalPages ? (
+                  <Link 
+                    href={`/admin/mitra?page=${currentPage + 1}`}
+                    className="px-4 py-2 bg-[#9B0B0B] hover:bg-red-900 text-white rounded-xl text-xs font-bold transition shadow-md shadow-red-100"
+                  >
+                    Next →
+                  </Link>
+                ) : (
+                  <button disabled className="px-4 py-2 bg-gray-50 text-gray-300 rounded-xl text-xs font-bold cursor-not-allowed border border-gray-100">
+                    Next →
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
